@@ -106,8 +106,10 @@ public class Main {
                 }
             }
         }
+
+        System.out.println("Частотное распределение совпадений по колонкам");
         System.out.println("numGroup = " + Arrays.toString(numGroup));
-        System.out.println("totalSum = " + totalSum);
+        System.out.println("Всего совпадений = " + totalSum);
         int count = 0;
         for (int c1 = maxL - 1; c1 >= 1; c1--) {
             for (int c2 = c1 - 1; c2 >= 0; c2--) {
@@ -166,6 +168,8 @@ public class Main {
         }
 
         // finish
+        System.out.println("В итоге получили " + groupNum + " неединичных групп");
+        System.out.println("из них " + count + " имеют больше 2 строк");
         long finita = System.nanoTime();
         System.out.print("FINISH, время = ");
         System.out.println((finita - start) / 1_000_000 + " ms");
