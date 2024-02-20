@@ -1,38 +1,35 @@
 package org.example;
 
 import java.io.*;
+import java.net.URL;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.zip.GZIPInputStream;
 
 public class Main {
     public static void main(String[] args) {
-//        https://github.com/PeacockTeam/new-job/releases/download/v1.0/lng-4.txt.gz
-
         long start = System.nanoTime();
-        String pathIn = "C://Users//alkor//Downloads//lng-4.txt.gz";
+
         String outname = "C://Users//alkor//Downloads//lng-4-group.txt";
-        List<String> scanList = new ArrayList<>();
-        File file = new File(pathIn);
+ //       List<String> scanList = new ArrayList<>();
         List<List<Long>> inputList = new ArrayList<>(); //быстрый способ создать коллекцию
         int maxL = 0; //максимальная длина строки (пока для справки)
-        int iter = 0; //Сколько строк прочитали на входе (тоже для справки)
 
-        try (GZIPInputStream gzip = new GZIPInputStream(new FileInputStream(file));
-             BufferedReader br = new BufferedReader(new InputStreamReader(gzip));) {
+        try (GZIPInputStream gzip = new GZIPInputStream(new URL("https://github.com/PeacockTeam/new-job/releases/download/v1.0/lng-4.txt.gz").openStream());
+             BufferedReader br = new BufferedReader(new InputStreamReader(gzip))) {
             String line = null;
             while ((line = br.readLine()) != null) {
-                scanList = Arrays.asList(line.split(";"));
+                List<String> scanList = Arrays.asList(line.split(";"));
                 try {
                     List<Long> result = new ArrayList<>();
                     boolean isPhone = false;
-                    for (int i = 0; i < scanList.size(); i++) {
-                        String x = scanList.get(i).replaceAll("[^0-9]", "");
-                        Long val = (x.length() > 5 ? Long.valueOf(x) : 0L);
+                    for (String s : scanList) {
+                        String x = s.replaceAll("[^0-9]", "");
+                        long val = (x.length() > 5 ? Long.valueOf(x) : 0L);
                         result.add(val);
                         isPhone = val > 0;
                     }
-                    iter++;
+
                     if (isPhone) {
                         if (result.size() > maxL) maxL = result.size();
                         inputList.add(result);
@@ -50,7 +47,7 @@ public class Main {
             e.printStackTrace(System.err);
         }
 
-        Collections.sort(inputList, new MyListComparator());
+        inputList.sort(new MyListComparator());
         int size0 = inputList.size();
 
         long beforGrupping = System.nanoTime();
@@ -102,8 +99,7 @@ public class Main {
             for (HashMap.Entry<Long, List<Integer>> entry : groupSearchMap[c].entrySet()) {
                 List<Integer> list = entry.getValue();
                 if (list.size() > 1) {
-                    Set<Integer> setInt = new HashSet();
-                    setInt.addAll(list);
+                    Set<Integer> setInt = new HashSet<>(list);
                     primaryGroups[c].add(setInt);
                     numGroup[c]++;
                     totalSum++;
@@ -115,7 +111,7 @@ public class Main {
         int count = 0;
         for (int c1 = maxL - 1; c1 >= 1; c1--) {
             for (int c2 = c1 - 1; c2 >= 0; c2--) {
-                Set<Integer> setInt = new HashSet();
+                Set<Integer> setInt = new HashSet<>();
                 for (Set<Integer> setB : primaryGroups[c1]) {
                     for (Set<Integer> setA : primaryGroups[c2]) {
                         if (!setInt.isEmpty()) setInt.clear();
@@ -134,10 +130,10 @@ public class Main {
         List<Set<Integer>> resultList = new ArrayList<>();
         for (List<Set<Integer>> set : primaryGroups) {
 
-            resultList.addAll(set.stream().filter(x -> !x.isEmpty()).collect(Collectors.toList()));
+            resultList.addAll(set.stream().filter(x -> !x.isEmpty()).toList());
         }
 
-        Collections.sort(resultList, new MySetComparator());
+        resultList.sort(new MySetComparator());
 
         int groupNum = resultList.size();
 //
