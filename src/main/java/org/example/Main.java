@@ -2,6 +2,7 @@ package org.example;
 
 import java.io.*;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.zip.GZIPInputStream;
@@ -161,7 +162,7 @@ public class Main {
                 }
             }
         }
-        System.out.println("Вторичная группировка ");
+        System.out.println("Финальная группировка ");
 
         List<Set<Integer>> resultList = new ArrayList<>();
         for (List<Set<Integer>> set : primaryGroups) {
@@ -178,7 +179,7 @@ public class Main {
 
 //Итоговый вывод
         try {
-            BufferedWriter writer = new BufferedWriter(new FileWriter(outname));
+            BufferedWriter writer = new BufferedWriter(new FileWriter(outname, StandardCharsets.UTF_8));
             writer.write("В итоге получили " + groupNum + " неединичных групп\n");
             writer.write("из них " + count + " имеют больше 2 строк\n");
 //            List<Long> outputList = new ArrayList<>();
