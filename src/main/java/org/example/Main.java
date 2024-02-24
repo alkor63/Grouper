@@ -21,6 +21,7 @@ public class Main {
 // outname - имя файла для записи результатов
         List<List<Long>> inputList = new ArrayList<>(); //быстрый способ создать коллекцию
         int maxL = 0; //максимальная длина строки (пока для справки)
+        List<Long> sumString = new ArrayList<>();
         try (GZIPInputStream gzip = new GZIPInputStream(new URL("https://github.com/PeacockTeam/new-job/releases/download/v1.0/lng-4.txt.gz").openStream());
              BufferedReader br = new BufferedReader(new InputStreamReader(gzip))) {
             String line = null;
@@ -28,7 +29,7 @@ public class Main {
                 List<String> scanList = Arrays.asList(line.split(";"));
 // разделили строку на слова по разделителю ";"
                 try {
-// хотим лист слов преобразовать в лист чисел
+// преобразовываем лист слов в лист чисел
                     List<Long> result = new ArrayList<>();
                     for (String s : scanList) {
                         long sumVal = 0;
@@ -38,83 +39,55 @@ public class Main {
                     }
 
                     if (result.size() > maxL) maxL = result.size();
-                    long sumPhones = result.stream().mapToLong(i -> i).sum();
-                    if (sumPhones > 0) {
-                        result.add(0, sumPhones); // типа HeshCode строки
-                        inputList.add(result);
-                    }
-// т.е. в каждой строке у нас записан сначала Хеш = сумме элементов,
-// а далее сами элементы - "0" либо 11-значные числа
+                    inputList.add(result);
+// т.е. в каждой строке у нас записаны элементы - "0" либо 11-значные числа
                 } catch (NumberFormatException e) {
                     System.out.println("Ошибка NumberFormat: " + e.getMessage());
                     // "бракованные" строки пропускаем
                 }
             }
-
         } catch (IOException e) {
             e.printStackTrace(System.err);
         }
         inputList.sort(new MyListComparator());
         int inputListSize = inputList.size();
-// "Search of twins"
-        List<Integer> twinsList = new ArrayList<>();
-        for (int i = 0; i < inputListSize - 1; i++) {
-            long hash1 = inputList.get(i).get(0);
-            long hash2 = inputList.get(i + 1).get(0);
-            if (hash1 == hash2) {
-//Хеши равны, теперь проверяем все элементы попарно
-                int listLen = inputList.get(i).size();
-                if (listLen != inputList.get(i + 1).size()) break;
-                int originNums = 0;
-                for (int c = 1; c < listLen; c++) {
-                    if (inputList.get(i).get(c) != inputList.get(i + 1).get(c)) originNums++;
-                }
-                if (originNums == 0) {// полное совпадение по всем полям
-                    twinsList.add(i + 1);
-                }
-            }
-        }
-// собрали в лист номера строк-дубликатов
-        if (twinsList.size() > 0) {
-            twinsList.stream().sorted(Comparator.reverseOrder());//отсортировали по убыванию
-            for (int d : twinsList) {
-                inputList.remove(d); // Удалили из списка строки-дубликаты (сначала с бОльшими номерами)
-            }
-            inputListSize = inputList.size(); //обновили значение с учетом удалённых строк
-        }
 
-//        long beforGrupping = System.nanoTime();
-//        System.out.print("Подготовились к группировке за = ");
-//        System.out.println((beforGrupping - start) / 1_000_000 + " ms");
+        long beforGrupping = System.nanoTime();
+        System.out.print("Подготовились к группировке за = ");
+        System.out.println((beforGrupping - start) / 1_000_000 + " ms");
 
 //Для последующей группировки каждый столбец собираем в Мапу(тел, счетчик)
 //Эти мапы (их будет inputList.size(), т.е. пока 11 шт) собираем в лист
 
         HashMap<Long, List<Integer>>[] groupSearchMap = new HashMap[maxL];
         for (int i = 0; i < maxL; i++) {
-            Long t = inputList.get(0).get(i + 1);//(т.к. в 0-й колонке наш "ХэшКод")
+            Long t = inputList.get(0).get(i);
             groupSearchMap[i] = new HashMap<>(Map.of(t, new ArrayList<>()));
             //проинициализировали список пока пустыми мапами
         }
-        for (int line = 0; line < inputListSize; line++) {
-            List<Long> currentList = inputList.get(line);
-            for (int j = 0; j < currentList.size() - 1; j++) {
-                int i = j + 1;
-                Long x = currentList.get(i);
-                if (x > 0L) {
+        for (int line = 0; line < inputListSize; line++) {  //идём по всему списку
+            List<Long> currentList = inputList.get(line);   //текущая строка
+            for (int i = 0; i < currentList.size(); i++) {
+                Long x = currentList.get(i);                //текущий элемент строки
+                if (x > 0L) {                               // это 11-значное число
                     List<Integer> members = new ArrayList<>();
-                    if (groupSearchMap[j].containsKey(x)) {
-                        members = groupSearchMap[j].get(x);
+                    boolean isDuplicate = false;
+                    if (groupSearchMap[i].containsKey(x)) {//если такое число уже есть в мапе
+                        members = groupSearchMap[i].get(x);//извлекаем список значений с номерами строк-членов группы
+                        for (int j : members) {//проаеряем всех членов группы
+                            if (checkDuplicate(currentList, inputList.get(j))) isDuplicate = true;
+                            // если нашли хоть одно совпадение
+                        }
                     }
-                    members.add(line);
-                    groupSearchMap[i - 1].put(x, members); //(пере)записываем ключ и строки, в которых он находится
+                    if (!isDuplicate) members.add(line);
+                    groupSearchMap[i].put(x, members); //(пере)записываем ключ и строки, в которых он находится
                 }
             }
         }//закончили собирать мапы
 
-//        long mapIsReady = System.nanoTime();
-//        System.out.print("Собрали мапы, время = ");
-//        System.out.println((mapIsReady - start) / 1_000_000 + " ms");
+        long mapIsReady = System.nanoTime();
+        System.out.print("Собрали мапы, время = ");
+        System.out.println((mapIsReady - start) / 1_000_000 + " ms");
         /*
 Если в мапе счетчик(длина листа) >1 ==> это группа
         далее ключи нам не нужны, только value
@@ -140,7 +113,6 @@ public class Main {
                 }
             }
         }
-        System.out.println("Первичная группировка ");
         System.out.println("Частотное распределение совпадений по колонкам");
         System.out.println("numGroup = " + Arrays.toString(numGroup));
         System.out.println("Всего совпадений = " + totalSum);
@@ -162,7 +134,6 @@ public class Main {
                 }
             }
         }
-        System.out.println("Финальная группировка ");
 
         List<Set<Integer>> resultList = new ArrayList<>();
         for (List<Set<Integer>> set : primaryGroups) {
@@ -172,14 +143,18 @@ public class Main {
 
         int groupNum = resultList.size();
 //
-//        long resultIsReady = System.nanoTime();
-//        System.out.print("Готов представить результат, время = ");
-//        System.out.println((resultIsReady - start) / 1_000_000 + " ms");
-//        System.out.println("Записываем результат в файл ");
+        long resultIsReady = System.nanoTime();
+        System.out.print("Готов представить результат, время = ");
+        System.out.println((resultIsReady - start) / 1_000_000 + " ms");
+        System.out.println("Записываем результат в файл ");
+/*
+Объединить все элементы в одну строку через разделитель: и обернуть тегами <b>… </b>
 
+strings.stream().collect(Collectors.joining(": ", "<b> ", " </b>"))
+ */
 //Итоговый вывод
         try {
-            BufferedWriter writer = new BufferedWriter(new FileWriter(outname, StandardCharsets.UTF_8));
+            BufferedWriter writer = new BufferedWriter(new FileWriter(outname));
             writer.write("В итоге получили " + groupNum + " неединичных групп\n");
             writer.write("из них " + count + " имеют больше 2 строк\n");
 //            List<Long> outputList = new ArrayList<>();
@@ -188,11 +163,9 @@ public class Main {
                 writer.newLine();
                 writer.write("Группа " + (g++));
                 for (Integer j : res) {
-                    List<Long> outputList = inputList.get(j)
-                            .stream().skip(1).toList();
                     writer.newLine();
                     writer.write(
-                            outputList.stream()
+                            inputList.get(j).stream()
                                     .map(n -> n == 0 ? "\"\"" : '"' + String.valueOf(n) + '"')
                                     .collect(Collectors.joining(";")));
                 }
@@ -209,6 +182,20 @@ public class Main {
         System.out.print("FINISH, время = ");
         System.out.println((finita - start) / 1_000_000 + " ms");
 
+    }
+
+    public static boolean checkDuplicate(List<Long> list1, List<Long> list2) {
+// метод возвращает true если 2 строки одинаковые
+        int listSize = list1.size();
+        if (listSize != list2.size()) return false;//сначала сравниваем длину строки
+        if (list1.stream().mapToLong(i -> i).sum() != list2.stream().mapToLong(i -> i).sum()) return false;
+//затем сравниваем сумму элементов строк
+//если суммы равны, проверяем все элементы попарно
+        int originNums = 0;
+        for (int c = 0; c < listSize; c++) {
+            if (list1.get(c) != list2.get(c)) originNums++;
+        }
+        return (originNums == 0);
     }
 }
 
